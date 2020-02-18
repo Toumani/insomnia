@@ -3,9 +3,11 @@ const CENTER_Y = 50;
 const RADIUS = 40;
 const DOT_RADIUS = 10;
 
+const TWO_PI = 2*Math.PI;
+const EIGHT_HOURS = Math.PI*4/3;
+const TWO_HOURS = Math.PI/3;
+
 class TwoRangesSlider extends React.Component {
-
-
 	constructor(props) {
 		super(props);
 
@@ -31,6 +33,8 @@ class TwoRangesSlider extends React.Component {
 		const headCardinalPosition = this.radialToCardinal(this.state.headAlpha);
 		ctx.beginPath();
 		ctx.arc(headCardinalPosition.x, headCardinalPosition.y, DOT_RADIUS, 0, 2*Math.PI);
+		ctx.fillStyle = "black";
+		ctx.fill();
 		ctx.stroke();
 
 		// Draw the tail
@@ -46,12 +50,23 @@ class TwoRangesSlider extends React.Component {
 			y: RADIUS*Math.sin(angle - Math.PI/2) + CENTER_Y
 		}
 	}
+
+	modulo2Pi = angle => {
+		while (angle > TWO_PI) {
+			angle -= TWO_PI;
+		}
+		while (angle < 0) {
+			angle += TWO_PI;
+		}
+		return angle
+	}
 	
 	moveSlider = (e) => {
 		if (this.state.trackingPointer) {
 			// Clear before redraw
 			const canvas = this.refs.canvas;
 			const ctx = canvas.getContext("2d");
+			const isHeadSelected = this.state.selected === 'head';
 			ctx.clearRect(0, 0, canvas.width, canvas.height);
 
 			// Draw the big circle
@@ -76,23 +91,61 @@ class TwoRangesSlider extends React.Component {
 				alpha = 2*Math.PI - Math.atan(relativeX/relativeY);
 			}
 
+			// Draw the selected index
 			let cardinalPosition = this.radialToCardinal(alpha);
 			ctx.beginPath();
 			ctx.arc(cardinalPosition.x, cardinalPosition.y, DOT_RADIUS, 0, 2*Math.PI);
+			if (isHeadSelected) {
+				ctx.fillStyle = "black";
+				ctx.fill();
+			}
 			ctx.stroke();
 
 			// Draw the unselected index
 			let unchangedCardinalPosition = {}
-			if (this.state.selected === 'head') {
-				unchangedCardinalPosition = this.radialToCardinal(this.state.tailAlpha);
-				this.setState({ headAlpha: alpha })
-			}
-			else if (this.state.selected === 'tail') {
-				unchangedCardinalPosition = this.radialToCardinal(this.state.headAlpha);
-				this.setState({ tailAlpha: alpha })
-			}
+			let delta = 0;
 			ctx.beginPath();
+			if (isHeadSelected) {
+				unchangedCardinalPosition = this.radialToCardinal(this.state.tailAlpha);
+
+				let tailAlpha = this.state.tailAlpha;
+				if (alpha < tailAlpha)
+					alpha += TWO_PI;
+				delta = this.modulo2Pi(alpha - tailAlpha);
+				if (delta > EIGHT_HOURS) {
+					tailAlpha = alpha - EIGHT_HOURS;
+				}
+				else if (delta < TWO_HOURS) {
+					tailAlpha = alpha - TWO_HOURS;
+				}
+				this.setState({
+					headAlpha: this.modulo2Pi(alpha),
+					tailAlpha: this.modulo2Pi(tailAlpha),
+				})
+			}
+			else {
+				unchangedCardinalPosition = this.radialToCardinal(this.state.headAlpha);
+
+				let headAlpha = this.state.headAlpha;
+				if (headAlpha < alpha)
+					alpha -= TWO_PI;
+				delta = this.modulo2Pi(headAlpha - alpha);
+				if (delta > EIGHT_HOURS) {
+					headAlpha = alpha + EIGHT_HOURS;
+				}
+				else if (delta < TWO_HOURS) {
+					headAlpha = alpha + TWO_HOURS;
+				}
+				this.setState({
+					headAlpha: this.modulo2Pi(headAlpha),
+					tailAlpha: this.modulo2Pi(alpha),
+				})
+			}
 			ctx.arc(unchangedCardinalPosition.x, unchangedCardinalPosition.y, DOT_RADIUS, 0, 2*Math.PI);
+			if (!isHeadSelected) {
+				ctx.fillStyle = "black";
+				ctx.fill();
+			}
 			ctx.stroke();
 
 			// Update the status
@@ -150,8 +203,9 @@ class TwoRangesSlider extends React.Component {
 				onMouseMove={e => this.moveSlider(e)}
 			/>
 			<h2>{this.state.relativeX}:{this.state.relativeY}</h2>
-			<h2>{this.state.headAlpha * 180 / Math.PI} deg</h2>
-			<h2>Tracking pointer: {this.state.trackingPointer ? 'true' : 'false'}</h2>
+			<h2>Head alpha: {this.state.headAlpha * 180 / Math.PI} deg</h2>
+			<h2>Tail alpha: {this.state.tailAlpha * 180 / Math.PI} deg</h2>
+			<h2>Delta: {(this.state.headAlpha - this.state.tailAlpha) * 180 / Math.PI} deg</h2>
 
 			<style jsx>{`
 				#myCanvas {
