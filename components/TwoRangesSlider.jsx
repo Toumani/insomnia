@@ -4,6 +4,7 @@ const RADIUS = 40;
 const DOT_RADIUS = 10;
 
 const TWO_PI = 2*Math.PI;
+const HALF_PI = Math.PI/2;
 const EIGHT_HOURS = Math.PI*4/3;
 const TWO_HOURS = Math.PI/3;
 
@@ -27,13 +28,16 @@ class TwoRangesSlider extends React.Component {
 		const ctx = this.refs.canvas.getContext("2d");
 		ctx.beginPath();
 		ctx.arc(CENTER_X, CENTER_Y, RADIUS, 0, 2*Math.PI);
+		ctx.closePath();
 		ctx.stroke();
 
 		// Draw the head
+		ctx.strokeStyle = 'cyan';
 		const headCardinalPosition = this.radialToCardinal(this.state.headAlpha);
 		ctx.beginPath();
 		ctx.arc(headCardinalPosition.x, headCardinalPosition.y, DOT_RADIUS, 0, 2*Math.PI);
-		ctx.fillStyle = "black";
+		ctx.closePath();
+		ctx.fillStyle = 'cyan';
 		ctx.fill();
 		ctx.stroke();
 
@@ -41,6 +45,15 @@ class TwoRangesSlider extends React.Component {
 		const tailCardinalPosition = this.radialToCardinal(this.state.tailAlpha);
 		ctx.beginPath();
 		ctx.arc(tailCardinalPosition.x, tailCardinalPosition.y, DOT_RADIUS, 0, 2*Math.PI);
+		ctx.closePath();
+		ctx.stroke();
+
+		// Draw arc between head and tail
+		ctx.beginPath();
+		ctx.arc(CENTER_X, CENTER_Y, RADIUS, this.state.tailAlpha - HALF_PI, this.state.headAlpha - HALF_PI);
+		// ctx.closePath();
+		ctx.lineWidth = 4;
+		ctx.strokeStyle = 'cyan';
 		ctx.stroke();
 	}
 
@@ -66,19 +79,29 @@ class TwoRangesSlider extends React.Component {
 			// Clear before redraw
 			const canvas = this.refs.canvas;
 			const ctx = canvas.getContext("2d");
+			ctx.lineWidth = 1;
+			ctx.strokeStyle = 'black';
 			const isHeadSelected = this.state.selected === 'head';
 			ctx.clearRect(0, 0, canvas.width, canvas.height);
 
 			// Draw the big circle
 			ctx.beginPath();
 			ctx.arc(CENTER_X, CENTER_Y, RADIUS, 0, 2*Math.PI);
+			ctx.closePath();
 			ctx.stroke();
+			ctx.strokeStyle = 'cyan';
 
 			// Calculate position of the slider index from the pointer position and draw it
 			let relativeX = e.pageX - canvas.offsetLeft - CENTER_X;
 			let relativeY = e.pageY - canvas.offsetTop - CENTER_Y;
 			let alpha = 0;
-			if (relativeX >= 0 && relativeY <= 0) {
+			if (relativeY == 0) {
+				if (relativeX > 0) 
+					alpha = Math.PI/2;
+				else
+					alpha = Math.PI*3/2;
+			}
+			else if (relativeX >= 0 && relativeY <= 0) {
 				alpha = -Math.atan(relativeX/relativeY);
 			}
 			else if (relativeX >= 0 && relativeY >= 0) {
@@ -95,8 +118,9 @@ class TwoRangesSlider extends React.Component {
 			let cardinalPosition = this.radialToCardinal(alpha);
 			ctx.beginPath();
 			ctx.arc(cardinalPosition.x, cardinalPosition.y, DOT_RADIUS, 0, 2*Math.PI);
+			ctx.closePath();
 			if (isHeadSelected) {
-				ctx.fillStyle = "black";
+				ctx.fillStyle = 'cyan';
 				ctx.fill();
 			}
 			ctx.stroke();
@@ -104,11 +128,14 @@ class TwoRangesSlider extends React.Component {
 			// Draw the unselected index
 			let unchangedCardinalPosition = {}
 			let delta = 0;
+			let tailAlpha = 0;
+			let headAlpha = 0;
 			ctx.beginPath();
 			if (isHeadSelected) {
 				unchangedCardinalPosition = this.radialToCardinal(this.state.tailAlpha);
 
-				let tailAlpha = this.state.tailAlpha;
+				headAlpha = alpha;
+				tailAlpha = this.state.tailAlpha;
 				if (alpha < tailAlpha)
 					alpha += TWO_PI;
 				delta = this.modulo2Pi(alpha - tailAlpha);
@@ -126,7 +153,8 @@ class TwoRangesSlider extends React.Component {
 			else {
 				unchangedCardinalPosition = this.radialToCardinal(this.state.headAlpha);
 
-				let headAlpha = this.state.headAlpha;
+				tailAlpha = alpha
+				headAlpha = this.state.headAlpha;
 				if (headAlpha < alpha)
 					alpha -= TWO_PI;
 				delta = this.modulo2Pi(headAlpha - alpha);
@@ -142,13 +170,21 @@ class TwoRangesSlider extends React.Component {
 				})
 			}
 			ctx.arc(unchangedCardinalPosition.x, unchangedCardinalPosition.y, DOT_RADIUS, 0, 2*Math.PI);
+			ctx.closePath();
 			if (!isHeadSelected) {
-				ctx.fillStyle = "black";
+				ctx.fillStyle = 'cyan';
 				ctx.fill();
 			}
 			ctx.stroke();
 
-			// Update the status
+			// Draw arc between head and tail
+			ctx.beginPath();
+			ctx.arc(CENTER_X, CENTER_Y, RADIUS, tailAlpha - HALF_PI, headAlpha - HALF_PI);
+			// ctx.closePath();
+			ctx.lineWidth = 4;
+			ctx.stroke();
+
+			// debug
 			this.setState({
 				relativeX,
 				relativeY,
