@@ -1,12 +1,23 @@
-const CENTER_X = 95;
-const CENTER_Y = 50;
-const RADIUS = 40;
+const CANVAS_WIDTH = 550;
+const CANVAS_HEIGHT = 450;
+
+const CENTER_X = CANVAS_WIDTH/2;
+const CENTER_Y = CANVAS_HEIGHT/2;
+const INNER_RADIUS = 130;
+const OUTER_RADIUS = 150;
+
 const DOT_RADIUS = 10;
+
+const RECT_WIDTH = 2*INNER_RADIUS + 2*DOT_RADIUS + 3;
+const RECT_HEIGHT = 2*INNER_RADIUS + 2*DOT_RADIUS + 3;
+const RECT_X = CENTER_X - INNER_RADIUS - DOT_RADIUS - 1;
+const RECT_Y = CENTER_Y - INNER_RADIUS - DOT_RADIUS - 1;
 
 const TWO_PI = 2*Math.PI;
 const HALF_PI = Math.PI/2;
-const EIGHT_HOURS = Math.PI*4/3;
-const TWO_HOURS = Math.PI/3;
+const ONE_HOUR = Math.PI/12;
+const EIGHT_HOURS = Math.PI*2/3;
+const TWO_HOURS = Math.PI/6;
 
 class TwoRangesSlider extends React.Component {
 	constructor(props) {
@@ -14,10 +25,10 @@ class TwoRangesSlider extends React.Component {
 
 		this.state = {
 			trackingPointer: false,
-			headAlpha: HALF_PI,
+			headAlpha: 6*ONE_HOUR,
 			tailAlpha: 0,
-			headBeta: EIGHT_HOURS,
-			tailBeta: Math.PI,
+			headBeta: 14*ONE_HOUR,
+			tailBeta: 12*ONE_HOUR,
 			selected: 'none',
 
 			relativeX: 0, // debug
@@ -26,11 +37,34 @@ class TwoRangesSlider extends React.Component {
 	}
 
 	componentDidMount() {
-		// Draw the big circle
 		const ctx = this.refs.canvas.getContext("2d");
+		// Draw the outer circle (debug)
 		ctx.beginPath();
-		ctx.arc(CENTER_X, CENTER_Y, RADIUS, 0, 2*Math.PI);
+		ctx.strokeStyle = '#DBDBDB';
+		ctx.arc(CENTER_X, CENTER_Y, OUTER_RADIUS, 0, 2*Math.PI);
+		ctx.stroke();
+
+		// Draw clock digits
+		ctx.strokeStyle = 'black';
+		const zeroPosition = this.radialToCardinal(OUTER_RADIUS, 0);
+		const sixPosition = this.radialToCardinal(OUTER_RADIUS, 6*ONE_HOUR);
+		const twelvePosition = this.radialToCardinal(OUTER_RADIUS, 12*ONE_HOUR);
+		const eighteenPosition = this.radialToCardinal(OUTER_RADIUS, 18*ONE_HOUR);
+		ctx.font = "18px 'Lacquer', sans-serif";
+		ctx.fillText('0', zeroPosition.x - 7, zeroPosition.y);
+		ctx.fillText('6', sixPosition.x, sixPosition.y);
+		ctx.fillText('12', twelvePosition.x - 5, twelvePosition.y + 15);
+		ctx.fillText('18', eighteenPosition.x - 15, eighteenPosition.y);
+
+		// Draw the inner circle
+		ctx.beginPath();
+		ctx.arc(CENTER_X, CENTER_Y, INNER_RADIUS, 0, 2*Math.PI);
 		ctx.closePath();
+		ctx.stroke();
+
+		// Draw the inner rect (debug)
+		ctx.beginPath();
+		ctx.rect(RECT_X, RECT_Y, RECT_WIDTH, RECT_HEIGHT);
 		ctx.stroke();
 
 		// Draw alpha slider
@@ -40,10 +74,10 @@ class TwoRangesSlider extends React.Component {
 		this.drawSlider(ctx, this.state.headBeta, this.state.tailBeta);
 	}
 
-	radialToCardinal = (angle) => {
+	radialToCardinal = (radius, angle) => {
 		return {
-			x: RADIUS*Math.cos(angle - Math.PI/2) + CENTER_X,
-			y: RADIUS*Math.sin(angle - Math.PI/2) + CENTER_Y
+			x: radius*Math.cos(angle - Math.PI/2) + CENTER_X,
+			y: radius*Math.sin(angle - Math.PI/2) + CENTER_Y
 		}
 	}
 
@@ -67,7 +101,7 @@ class TwoRangesSlider extends React.Component {
 	drawSlider = (ctx, headAngle, tailAngle) => {
 		// Draw the head
 		ctx.strokeStyle = 'cyan';
-		const headCardinalPosition = this.radialToCardinal(headAngle);
+		const headCardinalPosition = this.radialToCardinal(INNER_RADIUS, headAngle);
 		ctx.beginPath();
 		ctx.arc(headCardinalPosition.x, headCardinalPosition.y, DOT_RADIUS, 0, 2*Math.PI);
 		ctx.closePath();
@@ -76,15 +110,17 @@ class TwoRangesSlider extends React.Component {
 		ctx.stroke();
 
 		// Draw the tail
-		const tailCardinalPosition = this.radialToCardinal(tailAngle);
+		const tailCardinalPosition = this.radialToCardinal(INNER_RADIUS, tailAngle);
 		ctx.beginPath();
 		ctx.arc(tailCardinalPosition.x, tailCardinalPosition.y, DOT_RADIUS, 0, 2*Math.PI);
 		ctx.closePath();
+		ctx.fillStyle = 'cyan';
+		ctx.fill();
 		ctx.stroke();
 
 		// Draw arc between head and tail
 		ctx.beginPath();
-		ctx.arc(CENTER_X, CENTER_Y, RADIUS, tailAngle - HALF_PI, headAngle - HALF_PI);
+		ctx.arc(CENTER_X, CENTER_Y, INNER_RADIUS, tailAngle - HALF_PI, headAngle - HALF_PI);
 		// ctx.closePath();
 		ctx.lineWidth = 4;
 		ctx.strokeStyle = 'cyan';
@@ -99,11 +135,11 @@ class TwoRangesSlider extends React.Component {
 			ctx.lineWidth = 1;
 			ctx.strokeStyle = 'black';
 			const isHeadSelected = this.state.selected === 'headAlpha' || this.state.selected === 'headBeta';
-			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			ctx.clearRect(RECT_X, RECT_Y, RECT_WIDTH, RECT_HEIGHT);
 
 			// Draw the big circle
 			ctx.beginPath();
-			ctx.arc(CENTER_X, CENTER_Y, RADIUS, 0, 2*Math.PI);
+			ctx.arc(CENTER_X, CENTER_Y, INNER_RADIUS, 0, 2*Math.PI);
 			ctx.closePath();
 			ctx.stroke();
 			ctx.strokeStyle = 'cyan';
@@ -132,14 +168,12 @@ class TwoRangesSlider extends React.Component {
 			}
 
 			// Draw the selected index
-			let cardinalPosition = this.radialToCardinal(angle);
+			let cardinalPosition = this.radialToCardinal(INNER_RADIUS, angle);
 			ctx.beginPath();
 			ctx.arc(cardinalPosition.x, cardinalPosition.y, DOT_RADIUS, 0, 2*Math.PI);
 			ctx.closePath();
-			if (isHeadSelected) {
-				ctx.fillStyle = 'cyan';
-				ctx.fill();
-			}
+			ctx.fillStyle = 'cyan';
+			ctx.fill();
 			ctx.stroke();
 
 			if (this.state.selected === 'headAlpha' || this.state.selected === 'tailAlpha') {
@@ -165,7 +199,7 @@ class TwoRangesSlider extends React.Component {
 		let headAlpha = 0;
 		ctx.beginPath();
 		if (isHeadSelected) {
-			unchangedCardinalPosition = this.radialToCardinal(this.state.tailAlpha);
+			unchangedCardinalPosition = this.radialToCardinal(INNER_RADIUS, this.state.tailAlpha);
 
 			headAlpha = alpha;
 			tailAlpha = this.state.tailAlpha;
@@ -180,7 +214,7 @@ class TwoRangesSlider extends React.Component {
 			}
 		}
 		else {
-			unchangedCardinalPosition = this.radialToCardinal(this.state.headAlpha);
+			unchangedCardinalPosition = this.radialToCardinal(INNER_RADIUS, this.state.headAlpha);
 
 			tailAlpha = alpha
 			headAlpha = this.state.headAlpha;
@@ -210,10 +244,8 @@ class TwoRangesSlider extends React.Component {
 
 		ctx.arc(unchangedCardinalPosition.x, unchangedCardinalPosition.y, DOT_RADIUS, 0, 2*Math.PI);
 		ctx.closePath();
-		if (!isHeadSelected) {
-			ctx.fillStyle = 'cyan';
-			ctx.fill();
-		}
+		ctx.fillStyle = 'cyan';
+		ctx.fill();
 		ctx.stroke();
 
 		// Draw beta slider
@@ -221,7 +253,7 @@ class TwoRangesSlider extends React.Component {
 
 		// Draw arc between head and tail
 		ctx.beginPath();
-		ctx.arc(CENTER_X, CENTER_Y, RADIUS, tailAlpha - HALF_PI, headAlpha - HALF_PI);
+		ctx.arc(CENTER_X, CENTER_Y, INNER_RADIUS, tailAlpha - HALF_PI, headAlpha - HALF_PI);
 		ctx.lineWidth = 4;
 		ctx.stroke();
 	}
@@ -234,7 +266,7 @@ class TwoRangesSlider extends React.Component {
 		let headBeta = 0;
 		ctx.beginPath();
 		if (isHeadSelected) {
-			unchangedCardinalPosition = this.radialToCardinal(this.state.tailBeta);
+			unchangedCardinalPosition = this.radialToCardinal(INNER_RADIUS, this.state.tailBeta);
 
 			headBeta = beta;
 			tailBeta = this.state.tailBeta;
@@ -249,7 +281,7 @@ class TwoRangesSlider extends React.Component {
 			}
 		}
 		else {
-			unchangedCardinalPosition = this.radialToCardinal(this.state.headBeta);
+			unchangedCardinalPosition = this.radialToCardinal(INNER_RADIUS, this.state.headBeta);
 
 			tailBeta = beta
 			headBeta = this.state.headBeta;
@@ -279,10 +311,8 @@ class TwoRangesSlider extends React.Component {
 
 		ctx.arc(unchangedCardinalPosition.x, unchangedCardinalPosition.y, DOT_RADIUS, 0, 2*Math.PI);
 		ctx.closePath();
-		if (!isHeadSelected) {
-			ctx.fillStyle = 'cyan';
-			ctx.fill();
-		}
+		ctx.fillStyle = 'cyan';
+		ctx.fill();
 		ctx.stroke();
 
 		// Draw alpha slider
@@ -290,7 +320,7 @@ class TwoRangesSlider extends React.Component {
 
 		// Draw arc between head and tail
 		ctx.beginPath();
-		ctx.arc(CENTER_X, CENTER_Y, RADIUS, tailBeta - HALF_PI, headBeta - HALF_PI);
+		ctx.arc(CENTER_X, CENTER_Y, INNER_RADIUS, tailBeta - HALF_PI, headBeta - HALF_PI);
 		ctx.lineWidth = 4;
 		ctx.stroke();
 	}
@@ -298,10 +328,10 @@ class TwoRangesSlider extends React.Component {
 	trackPointer = (e) => {
 		// Check if mouse clicked on the head, tail or neither by comparing clicking point with index center
 		const canvas = this.refs.canvas;
-		const headAlphaCenter = this.radialToCardinal(this.state.headAlpha);
-		const tailAlphaCenter = this.radialToCardinal(this.state.tailAlpha);
-		const headBetaCenter = this.radialToCardinal(this.state.headBeta);
-		const tailBetaCenter = this.radialToCardinal(this.state.tailBeta);
+		const headAlphaCenter = this.radialToCardinal(INNER_RADIUS, this.state.headAlpha);
+		const tailAlphaCenter = this.radialToCardinal(INNER_RADIUS, this.state.tailAlpha);
+		const headBetaCenter = this.radialToCardinal(INNER_RADIUS, this.state.headBeta);
+		const tailBetaCenter = this.radialToCardinal(INNER_RADIUS, this.state.tailBeta);
 
 		const relativeClick = {
 			x: e.pageX - canvas.offsetLeft,
@@ -343,8 +373,8 @@ class TwoRangesSlider extends React.Component {
 			<canvas
 				id="myCanvas"
 				ref="canvas"
-				width={200}
-				height={100}
+				width={CANVAS_WIDTH}
+				height={CANVAS_HEIGHT}
 				onMouseDown={e => this.trackPointer(e)}
 				onMouseUp={this.untrackPointer}
 				onMouseMove={e => this.moveSlider(e)}
@@ -358,6 +388,8 @@ class TwoRangesSlider extends React.Component {
 
 			<style jsx>{`
 				#myCanvas {
+					display: block;
+					margin: auto;
 					border: 1px solid #d3d3d3;
 				}
 			`}</style>
