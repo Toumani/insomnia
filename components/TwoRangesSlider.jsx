@@ -25,11 +25,33 @@ class TwoRangesSlider extends React.Component {
 
 		this.state = {
 			trackingPointer: false,
-			headAlpha: 6*ONE_HOUR,
-			tailAlpha: 0,
-			headBeta: 14*ONE_HOUR,
-			tailBeta: 12*ONE_HOUR,
-			selected: 'none',
+			alpha: {
+				name: 'alpha',
+				head: {
+					angle: 6*ONE_HOUR,
+					type: 'head',
+				},
+				tail: {
+					angle: 0,
+					type: 'tail',
+				},
+			},
+			beta: {
+				name: 'beta',
+				head: {
+					angle: 14*ONE_HOUR,
+					type: 'head',
+				},
+				tail: {
+					angle: 12*ONE_HOUR,
+					type: 'tail',
+				},
+			},
+			
+			headAngle: 6*ONE_HOUR,
+			tailAngle: 0,
+			selectedSlider: null,
+			selectedIndex: null,
 
 			relativeX: 0, // debug
 			relativeY: 0, // debug
@@ -68,10 +90,10 @@ class TwoRangesSlider extends React.Component {
 		ctx.stroke();
 
 		// Draw alpha slider
-		this.drawSlider(ctx, this.state.headAlpha, this.state.tailAlpha);
+		this.drawSlider(ctx, this.state.alpha);
 
 		// Draw beta slider
-		this.drawSlider(ctx, this.state.headBeta, this.state.tailBeta);
+		this.drawSlider(ctx, this.state.beta);
 	}
 
 	radialToCardinal = (radius, angle) => {
@@ -82,7 +104,7 @@ class TwoRangesSlider extends React.Component {
 	}
 
 	modulo2Pi = angle => {
-		while (angle > TWO_PI) {
+		while (angle >= TWO_PI) {
 			angle -= TWO_PI;
 		}
 		while (angle < 0) {
@@ -98,7 +120,10 @@ class TwoRangesSlider extends React.Component {
 		);
 	}
 
-	drawSlider = (ctx, headAngle, tailAngle) => {
+	drawSlider = (ctx, slider) => {
+		const headAngle = slider.head.angle;
+		const tailAngle = slider.tail.angle;
+
 		// Draw the head
 		ctx.strokeStyle = 'cyan';
 		const headCardinalPosition = this.radialToCardinal(INNER_RADIUS, headAngle);
@@ -121,20 +146,79 @@ class TwoRangesSlider extends React.Component {
 		// Draw arc between head and tail
 		ctx.beginPath();
 		ctx.arc(CENTER_X, CENTER_Y, INNER_RADIUS, tailAngle - HALF_PI, headAngle - HALF_PI);
-		// ctx.closePath();
 		ctx.lineWidth = 4;
 		ctx.strokeStyle = 'cyan';
 		ctx.stroke();
 	}
 	
 	moveSlider = (e) => {
-		if (this.state.trackingPointer) {
+		const { trackingPointer, selectedSlider, selectedIndex, alpha, beta, headAngle, tailAngle } = this.state;
+		const canvas = this.refs.canvas;
+
+		if (trackingPointer) {
+			// Calculate position of the slider index from the pointer position
+			let relativeX = e.pageX - canvas.offsetLeft - CENTER_X;
+			let relativeY = e.pageY - canvas.offsetTop - CENTER_Y;
+			let selectedNewAngle = 0;
+			if (relativeY == 0) {
+				if (relativeX > 0) 
+					selectedNewAngle = Math.PI/2;
+				else
+					selectedNewAngle = Math.PI*3/2;
+			}
+			else if (relativeX >= 0 && relativeY <= 0) {
+				selectedNewAngle = -Math.atan(relativeX/relativeY);
+			}
+			else if (relativeX >= 0 && relativeY >= 0) {
+				selectedNewAngle = Math.PI - Math.atan(relativeX/relativeY);
+			}
+			else if (relativeX <= 0 && relativeY >= 0) {
+				selectedNewAngle = Math.PI - Math.atan(relativeX/relativeY);
+			}
+			else if (relativeX <= 0 && relativeY <= 0) {
+				selectedNewAngle = 2*Math.PI - Math.atan(relativeX/relativeY);
+			}
+
+			// Determine opposite index position from selected index position
+			const isHeadSelected = selectedIndex.type === 'head';
+			let oppositeNewAngle = 0;
+			if (isHeadSelected) {
+				// oppositeNewAngle = selectedSlider.tail.angle;
+				oppositeNewAngle = tailAngle; // TODO distinguish alpha and beta cases
+
+				// Head must be greater than tail. We add 2 pi if not.
+				if (selectedNewAngle < oppositeNewAngle)
+					selectedNewAngle += TWO_PI;
+			}
+			else {
+				// oppositeNewAngle = selectedSlider.head.angle;
+				oppositeNewAngle = headAngle; // TODO distinguish alpha and beta cases
+
+				// Head must be greater than tail. We add 2 pi if not.
+				if (selectedNewAngle > oppositeNewAngle)
+					oppositeNewAngle += TWO_PI;
+			}
+			let delta = selectedNewAngle - oppositeNewAngle;
+			// If delta is gt 0 then we are selecting head. Otherwise we are selecting tail.
+			// We can be sure of that because we are sure that head angle is gt tail angle
+
+			// Max lenght constraint
+			if (Math.abs(delta) > EIGHT_HOURS) {
+				oppositeNewAngle = selectedNewAngle - Math.sign(delta)*EIGHT_HOURS;
+			}
+
+			// Min lenght constraint
+			if (Math.abs(delta) < TWO_HOURS) {
+				oppositeNewAngle = selectedNewAngle - Math.sign(delta)*TWO_HOURS;
+			}
+
+			const localHeadAngle = isHeadSelected ? selectedNewAngle : oppositeNewAngle;
+			const localTailAngle = isHeadSelected ? oppositeNewAngle : selectedNewAngle;
+			
 			// Clear before redraw
-			const canvas = this.refs.canvas;
 			const ctx = canvas.getContext("2d");
 			ctx.lineWidth = 1;
 			ctx.strokeStyle = 'black';
-			const isHeadSelected = this.state.selected === 'headAlpha' || this.state.selected === 'headBeta';
 			ctx.clearRect(RECT_X, RECT_Y, RECT_WIDTH, RECT_HEIGHT);
 
 			// Draw the big circle
@@ -144,194 +228,38 @@ class TwoRangesSlider extends React.Component {
 			ctx.stroke();
 			ctx.strokeStyle = 'cyan';
 
-			// Calculate position of the slider index from the pointer position and draw it
-			let relativeX = e.pageX - canvas.offsetLeft - CENTER_X;
-			let relativeY = e.pageY - canvas.offsetTop - CENTER_Y;
-			let angle = 0;
-			if (relativeY == 0) {
-				if (relativeX > 0) 
-					angle = Math.PI/2;
-				else
-					angle = Math.PI*3/2;
+			// Meant reference comparison
+			if (selectedSlider == alpha) {
+				// Draw beta slider
+				this.drawSlider(ctx, beta);
 			}
-			else if (relativeX >= 0 && relativeY <= 0) {
-				angle = -Math.atan(relativeX/relativeY);
-			}
-			else if (relativeX >= 0 && relativeY >= 0) {
-				angle = Math.PI - Math.atan(relativeX/relativeY);
-			}
-			else if (relativeX <= 0 && relativeY >= 0) {
-				angle = Math.PI - Math.atan(relativeX/relativeY);
-			}
-			else if (relativeX <= 0 && relativeY <= 0) {
-				angle = 2*Math.PI - Math.atan(relativeX/relativeY);
+			else if (selectedSlider == beta) {
+				// Draw alpha slider
+				this.drawSlider(ctx, alpha);
 			}
 
-			// Draw the selected index
-			let cardinalPosition = this.radialToCardinal(INNER_RADIUS, angle);
-			ctx.beginPath();
-			ctx.arc(cardinalPosition.x, cardinalPosition.y, DOT_RADIUS, 0, 2*Math.PI);
-			ctx.closePath();
-			ctx.fillStyle = 'cyan';
-			ctx.fill();
-			ctx.stroke();
+			// Draw selected slider
+			this.drawSlider(ctx, { head: { angle: localHeadAngle }, tail: { angle: localTailAngle } });
 
-			if (this.state.selected === 'headAlpha' || this.state.selected === 'tailAlpha') {
-				this.moveAlphaSlider(ctx, angle, isHeadSelected);
-			}
-			else if (this.state.selected === 'headBeta' || this.state.selected === 'tailBeta') {
-				this.moveBetaSlider(ctx, angle, isHeadSelected);
-			}
 
-			// debug
 			this.setState({
+				headAngle: this.modulo2Pi(localHeadAngle),
+				tailAngle: this.modulo2Pi(localTailAngle),
+				// debug
 				relativeX,
 				relativeY,
 			});
 		}
 	}
 
-	moveAlphaSlider = (ctx, alpha, isHeadSelected) => {
-		// Draw the unselected index
-		let unchangedCardinalPosition = {}
-		let delta = 0;
-		let tailAlpha = 0;
-		let headAlpha = 0;
-		ctx.beginPath();
-		if (isHeadSelected) {
-			unchangedCardinalPosition = this.radialToCardinal(INNER_RADIUS, this.state.tailAlpha);
-
-			headAlpha = alpha;
-			tailAlpha = this.state.tailAlpha;
-			if (alpha < tailAlpha)
-				alpha += TWO_PI;
-			delta = this.modulo2Pi(alpha - tailAlpha);
-			if (delta > EIGHT_HOURS) {
-				tailAlpha = alpha - EIGHT_HOURS;
-			}
-			else if (delta < TWO_HOURS) {
-				tailAlpha = alpha - TWO_HOURS;
-			}
-		}
-		else {
-			unchangedCardinalPosition = this.radialToCardinal(INNER_RADIUS, this.state.headAlpha);
-
-			tailAlpha = alpha
-			headAlpha = this.state.headAlpha;
-			if (headAlpha < alpha)
-				alpha -= TWO_PI;
-			delta = this.modulo2Pi(headAlpha - alpha);
-			if (delta > EIGHT_HOURS) {
-				headAlpha = alpha + EIGHT_HOURS;
-			}
-			else if (delta < TWO_HOURS) {
-				headAlpha = alpha + TWO_HOURS;
-			}
-		}
-
-		if (isHeadSelected) {
-			this.setState({
-				headAlpha: this.modulo2Pi(alpha),
-				tailAlpha: this.modulo2Pi(tailAlpha),
-			})
-		}
-		else {
-			this.setState({
-				headAlpha: this.modulo2Pi(headAlpha),
-				tailAlpha: this.modulo2Pi(alpha),
-			})
-		}
-
-		ctx.arc(unchangedCardinalPosition.x, unchangedCardinalPosition.y, DOT_RADIUS, 0, 2*Math.PI);
-		ctx.closePath();
-		ctx.fillStyle = 'cyan';
-		ctx.fill();
-		ctx.stroke();
-
-		// Draw beta slider
-		this.drawSlider(ctx, this.state.headBeta, this.state.tailBeta);
-
-		// Draw arc between head and tail
-		ctx.beginPath();
-		ctx.arc(CENTER_X, CENTER_Y, INNER_RADIUS, tailAlpha - HALF_PI, headAlpha - HALF_PI);
-		ctx.lineWidth = 4;
-		ctx.stroke();
-	}
-
-	moveBetaSlider = (ctx, beta, isHeadSelected) => {
-		// Draw the unselected index
-		let unchangedCardinalPosition = {}
-		let delta = 0;
-		let tailBeta = 0;
-		let headBeta = 0;
-		ctx.beginPath();
-		if (isHeadSelected) {
-			unchangedCardinalPosition = this.radialToCardinal(INNER_RADIUS, this.state.tailBeta);
-
-			headBeta = beta;
-			tailBeta = this.state.tailBeta;
-			if (beta < tailBeta)
-				beta += TWO_PI;
-			delta = this.modulo2Pi(beta - tailBeta);
-			if (delta > EIGHT_HOURS) {
-				tailBeta = beta - EIGHT_HOURS;
-			}
-			else if (delta < TWO_HOURS) {
-				tailBeta = beta - TWO_HOURS;
-			}
-		}
-		else {
-			unchangedCardinalPosition = this.radialToCardinal(INNER_RADIUS, this.state.headBeta);
-
-			tailBeta = beta
-			headBeta = this.state.headBeta;
-			if (headBeta < beta)
-				beta -= TWO_PI;
-			delta = this.modulo2Pi(headBeta - beta);
-			if (delta > EIGHT_HOURS) {
-				headBeta = beta + EIGHT_HOURS;
-			}
-			else if (delta < TWO_HOURS) {
-				headBeta = beta + TWO_HOURS;
-			}
-		}
-
-		if (isHeadSelected) {
-			this.setState({
-				headBeta: this.modulo2Pi(beta),
-				tailBeta: this.modulo2Pi(tailBeta),
-			})
-		}
-		else {
-			this.setState({
-				headBeta: this.modulo2Pi(headBeta),
-				tailBeta: this.modulo2Pi(beta),
-			})
-		}
-
-		ctx.arc(unchangedCardinalPosition.x, unchangedCardinalPosition.y, DOT_RADIUS, 0, 2*Math.PI);
-		ctx.closePath();
-		ctx.fillStyle = 'cyan';
-		ctx.fill();
-		ctx.stroke();
-
-		// Draw alpha slider
-		this.drawSlider(ctx, this.state.headAlpha, this.state.tailAlpha);
-
-		// Draw arc between head and tail
-		ctx.beginPath();
-		ctx.arc(CENTER_X, CENTER_Y, INNER_RADIUS, tailBeta - HALF_PI, headBeta - HALF_PI);
-		ctx.lineWidth = 4;
-		ctx.stroke();
-	}
-
 	trackPointer = (e) => {
+		const { alpha, beta } = this.state;
 		// Check if mouse clicked on the head, tail or neither by comparing clicking point with index center
 		const canvas = this.refs.canvas;
-		const headAlphaCenter = this.radialToCardinal(INNER_RADIUS, this.state.headAlpha);
-		const tailAlphaCenter = this.radialToCardinal(INNER_RADIUS, this.state.tailAlpha);
-		const headBetaCenter = this.radialToCardinal(INNER_RADIUS, this.state.headBeta);
-		const tailBetaCenter = this.radialToCardinal(INNER_RADIUS, this.state.tailBeta);
+		const headAlphaCenter = this.radialToCardinal(INNER_RADIUS, alpha.head.angle);
+		const tailAlphaCenter = this.radialToCardinal(INNER_RADIUS, alpha.tail.angle);
+		const headBetaCenter = this.radialToCardinal(INNER_RADIUS, beta.head.angle);
+		const tailBetaCenter = this.radialToCardinal(INNER_RADIUS, beta.tail.angle);
 
 		const relativeClick = {
 			x: e.pageX - canvas.offsetLeft,
@@ -344,56 +272,80 @@ class TwoRangesSlider extends React.Component {
 		const distanceToTailBeta = this.distance(tailBetaCenter, relativeClick);
 					
 		const minDistance = Math.min(distanceToHeadAlpha, distanceToTailAlpha, distanceToHeadBeta, distanceToTailBeta);
-		let selected = 'none';
+		let selectedSlider = null;
+		let selectedIndex = null;
 		switch (minDistance) {
 			case distanceToHeadAlpha:
-				selected = 'headAlpha';
+				selectedSlider = alpha
+				selectedIndex = alpha.head;
 				break;
 			case distanceToTailAlpha:
-				selected = 'tailAlpha';
+				selectedSlider = alpha
+				selectedIndex = alpha.tail;
 				break;
 			case distanceToHeadBeta:
-				selected = 'headBeta';
+				selectedSlider = beta
+				selectedIndex = beta.head;
 				break;
 			case distanceToTailBeta:
-				selected = 'tailBeta';
+				selectedSlider = beta
+				selectedIndex = beta.tail;
 				break;
 		}
 		const trackingPointer = minDistance < DOT_RADIUS;
 
-		this.setState({ trackingPointer, selected });
+		this.setState({ trackingPointer, selectedSlider, selectedIndex });
 	}
 
-	untrackPointer = () => { this.setState({ trackingPointer: false }); }
+	untrackPointer = () => {
+		// React state update seems not fast enough with complex objects.
+		// So in the mouse move event update only simple type variable in the state
+		// Complex variable (sliders) are updated here once mouse is released
+		const { selectedSlider, headAngle, tailAngle } = this.state;
+		this.setState({
+			trackingPointer: false,
+			[selectedSlider.name]: {
+				name: selectedSlider.name,
+				head: {
+					angle: this.modulo2Pi(headAngle),
+					type: 'head',
+				},
+				tail: {
+					angle: this.modulo2Pi(tailAngle),
+					type: 'tail',
+				}
+			},
+		});
+	}
 	
 	render() {
+		const { alpha, beta } = this.state;
 		return (
-		<div>
-			<h1>Hello World</h1>
-			<canvas
-				id="myCanvas"
-				ref="canvas"
-				width={CANVAS_WIDTH}
-				height={CANVAS_HEIGHT}
-				onMouseDown={e => this.trackPointer(e)}
-				onMouseUp={this.untrackPointer}
-				onMouseMove={e => this.moveSlider(e)}
-			/>
-			<h2>{this.state.relativeX}:{this.state.relativeY}</h2>
-			<h2>Head alpha: {this.state.headAlpha * 180 / Math.PI} deg</h2>
-			<h2>Tail alpha: {this.state.tailAlpha * 180 / Math.PI} deg</h2>
-			<h2>Delta: {(this.state.headAlpha - this.state.tailAlpha) * 180 / Math.PI} deg</h2>
-			<h2>Tracking pointer: {this.state.trackingPointer ? 'true' : 'false'}</h2>
-			<h2>Selected: {this.state.selected}</h2>
+			<div>
+				<h1>Hello World</h1>
+				<canvas
+					id="myCanvas"
+					ref="canvas"
+					width={CANVAS_WIDTH}
+					height={CANVAS_HEIGHT}
+					onMouseDown={e => this.trackPointer(e)}
+					onMouseUp={this.untrackPointer}
+					onMouseMove={e => this.moveSlider(e)}
+				/>
+				<h2>{this.state.relativeX}:{this.state.relativeY}</h2>
+				<h2>Head alpha: {alpha.head.angle * 180 / Math.PI} deg, {alpha.head.angle / Math.PI} pi.rd</h2>
+				<h2>Tail alpha: {alpha.tail.angle * 180 / Math.PI} deg, {alpha.tail.angle / Math.PI} pi.rd</h2>
+				<h2>Delta: {(alpha.head.angle - alpha.tail.angle) * 180 / Math.PI} deg</h2>
+				<h2>Tracking pointer: {this.state.trackingPointer ? 'true' : 'false'}</h2>
 
-			<style jsx>{`
-				#myCanvas {
-					display: block;
-					margin: auto;
-					border: 1px solid #d3d3d3;
-				}
-			`}</style>
-		</div>
+				<style jsx>{`
+					#myCanvas {
+						display: block;
+						margin: auto;
+						border: 1px solid #d3d3d3;
+					}
+				`}</style>
+			</div>
 		);
 	}
 
