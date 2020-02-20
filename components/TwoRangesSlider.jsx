@@ -54,19 +54,11 @@ class TwoRangesSlider extends React.Component {
 			tailAngle: null,
 			selectedSlider: null,
 			selectedIndex: null,
-
-			relativeX: 0, // debug
-			relativeY: 0, // debug
 		}
 	}
 
 	componentDidMount() {
 		const ctx = this.refs.canvas.getContext("2d");
-		// Draw the outer circle (debug)
-		ctx.beginPath();
-		ctx.strokeStyle = '#DBDBDB';
-		ctx.arc(CENTER_X, CENTER_Y, OUTER_RADIUS, 0, 2*Math.PI);
-		ctx.stroke();
 
 		// Draw clock digits
 		ctx.strokeStyle = 'black';
@@ -84,11 +76,6 @@ class TwoRangesSlider extends React.Component {
 		ctx.beginPath();
 		ctx.arc(CENTER_X, CENTER_Y, INNER_RADIUS, 0, 2*Math.PI);
 		ctx.closePath();
-		ctx.stroke();
-
-		// Draw the inner rect (debug)
-		ctx.beginPath();
-		ctx.rect(RECT_X, RECT_Y, RECT_WIDTH, RECT_HEIGHT);
 		ctx.stroke();
 
 		// Draw alpha slider
@@ -265,9 +252,6 @@ class TwoRangesSlider extends React.Component {
 			this.setState({
 				headAngle: this.modulo2Pi(localHeadAngle),
 				tailAngle: this.modulo2Pi(localTailAngle),
-				// debug
-				relativeX,
-				relativeY,
 			});
 		}
 	}
@@ -346,10 +330,8 @@ class TwoRangesSlider extends React.Component {
 	}
 	
 	render() {
-		const { alpha, beta } = this.state;
 		return (
-			<div>
-				<h1>Hello World</h1>
+			<>
 				<canvas
 					id="myCanvas"
 					ref="canvas"
@@ -359,20 +341,14 @@ class TwoRangesSlider extends React.Component {
 					onMouseUp={this.untrackPointer}
 					onMouseMove={e => this.moveSlider(e)}
 				/>
-				<h2>{this.state.relativeX}:{this.state.relativeY}</h2>
-				<h2>Head alpha: {alpha.head.angle * 180 / Math.PI} deg, {alpha.head.angle / Math.PI} pi.rd</h2>
-				<h2>Tail alpha: {alpha.tail.angle * 180 / Math.PI} deg, {alpha.tail.angle / Math.PI} pi.rd</h2>
-				<h2>Delta: {(alpha.head.angle - alpha.tail.angle) * 180 / Math.PI} deg</h2>
-				<h2>Tracking pointer: {this.state.trackingPointer ? 'true' : 'false'}</h2>
 
 				<style jsx>{`
 					#myCanvas {
-						display: block;
+						display: inline-flex;
 						margin: auto;
-						border: 1px solid #d3d3d3;
 					}
 				`}</style>
-			</div>
+			</>
 		);
 	}
 
