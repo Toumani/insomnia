@@ -48,8 +48,8 @@ class TwoRangesSlider extends React.Component {
 				},
 			},
 			
-			headAngle: 6*ONE_HOUR,
-			tailAngle: 0,
+			headAngle: null,
+			tailAngle: null,
 			selectedSlider: null,
 			selectedIndex: null,
 
@@ -184,7 +184,7 @@ class TwoRangesSlider extends React.Component {
 			let oppositeNewAngle = 0;
 			if (isHeadSelected) {
 				// oppositeNewAngle = selectedSlider.tail.angle;
-				oppositeNewAngle = tailAngle; // TODO distinguish alpha and beta cases
+				oppositeNewAngle = tailAngle;
 
 				// Head must be greater than tail. We add 2 pi if not.
 				if (selectedNewAngle < oppositeNewAngle)
@@ -192,7 +192,7 @@ class TwoRangesSlider extends React.Component {
 			}
 			else {
 				// oppositeNewAngle = selectedSlider.head.angle;
-				oppositeNewAngle = headAngle; // TODO distinguish alpha and beta cases
+				oppositeNewAngle = headAngle;
 
 				// Head must be greater than tail. We add 2 pi if not.
 				if (selectedNewAngle > oppositeNewAngle)
@@ -211,6 +211,9 @@ class TwoRangesSlider extends React.Component {
 			if (Math.abs(delta) < TWO_HOURS) {
 				oppositeNewAngle = selectedNewAngle - Math.sign(delta)*TWO_HOURS;
 			}
+
+			// Min distance from other slider constraint
+
 
 			const localHeadAngle = isHeadSelected ? selectedNewAngle : oppositeNewAngle;
 			const localTailAngle = isHeadSelected ? oppositeNewAngle : selectedNewAngle;
@@ -240,7 +243,6 @@ class TwoRangesSlider extends React.Component {
 
 			// Draw selected slider
 			this.drawSlider(ctx, { head: { angle: localHeadAngle }, tail: { angle: localTailAngle } });
-
 
 			this.setState({
 				headAngle: this.modulo2Pi(localHeadAngle),
@@ -294,7 +296,14 @@ class TwoRangesSlider extends React.Component {
 		}
 		const trackingPointer = minDistance < DOT_RADIUS;
 
-		this.setState({ trackingPointer, selectedSlider, selectedIndex });
+		this.setState({
+			trackingPointer,
+			selectedSlider,
+			selectedIndex,
+
+			headAngle: selectedSlider.head.angle,
+			tailAngle: selectedSlider.tail.angle,
+		});
 	}
 
 	untrackPointer = () => {
