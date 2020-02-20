@@ -19,6 +19,8 @@ const ONE_HOUR = Math.PI/12;
 const EIGHT_HOURS = Math.PI*2/3;
 const TWO_HOURS = Math.PI/6;
 
+const MIN_GAP = 4*ONE_HOUR;
+
 class TwoRangesSlider extends React.Component {
 	constructor(props) {
 		super(props);
@@ -182,8 +184,9 @@ class TwoRangesSlider extends React.Component {
 			// Determine opposite index position from selected index position
 			const isHeadSelected = selectedIndex.type === 'head';
 			let oppositeNewAngle = 0;
+
+			
 			if (isHeadSelected) {
-				// oppositeNewAngle = selectedSlider.tail.angle;
 				oppositeNewAngle = tailAngle;
 
 				// Head must be greater than tail. We add 2 pi if not.
@@ -191,7 +194,6 @@ class TwoRangesSlider extends React.Component {
 					selectedNewAngle += TWO_PI;
 			}
 			else {
-				// oppositeNewAngle = selectedSlider.head.angle;
 				oppositeNewAngle = headAngle;
 
 				// Head must be greater than tail. We add 2 pi if not.
@@ -212,11 +214,27 @@ class TwoRangesSlider extends React.Component {
 				oppositeNewAngle = selectedNewAngle - Math.sign(delta)*TWO_HOURS;
 			}
 
-			// Min distance from other slider constraint
-
-
 			const localHeadAngle = isHeadSelected ? selectedNewAngle : oppositeNewAngle;
 			const localTailAngle = isHeadSelected ? oppositeNewAngle : selectedNewAngle;
+
+			// frontGap stands for angle between current slider's head and next slider's tail
+			// rearGap stands for angle between current slider's tail and previous slider's head
+			let frontGap = 0;
+			let rearGap = 0;
+
+			if (selectedSlider == alpha) {
+				frontGap = this.modulo2Pi(beta.tail.angle - localHeadAngle);
+				rearGap = this.modulo2Pi(localTailAngle - beta.head.angle);
+			}
+			else if (selectedSlider == beta) {
+				frontGap = this.modulo2Pi(alpha.tail.angle - localHeadAngle);
+				rearGap = this.modulo2Pi(localTailAngle - alpha.head.angle);
+			}
+
+			// Min distance from other slider constraint. If min gap is not met, no position update
+			if (frontGap < MIN_GAP || rearGap < MIN_GAP) {
+				return;
+			}
 			
 			// Clear before redraw
 			const ctx = canvas.getContext("2d");
