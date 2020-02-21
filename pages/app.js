@@ -12,7 +12,7 @@ class App extends React.Component {
 		return (
 			<div id="root">
 				<Head>
-					<meta charSet="UTF-8" />
+					<meta charSet="utf-8" />
 
 					<link href="https://fonts.googleapis.com/css?family=Lacquer&display=swap" rel="stylesheet" /> 
 					<link href="https://fonts.googleapis.com/css?family=Comfortaa&display=swap" rel="stylesheet" /> 
