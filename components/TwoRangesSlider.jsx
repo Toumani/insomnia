@@ -374,6 +374,7 @@ class TwoRangesSlider extends React.Component {
 					#myCanvas {
 						display: inline-flex;
 						margin: auto;
+						z-index: 5;
 					}
 				`}</style>
 			</>

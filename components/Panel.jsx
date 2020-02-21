@@ -5,20 +5,9 @@ class Panel extends React.Component {
 		this.state = { panelOpacity: 0 };
 	}
 
-	componentWillReceiveProps() {
-		if (this.state.panelOpacity === 0) {
-			setTimeout(() => {
-				this.setState({ panelOpacity: 1 });
-			}, 50);
-		}
-		else {
-			this.setState({ panelOpacity: 0 });
-		}
-	}
-
 	render() {
-		const panelDisplay = this.props.open ? 'block' : 'none';
-		const { panelOpacity } = this.state;
+		const panelZIndex = this.props.open ? 10 : 0;
+		const panelOpacity = this.props.open ? 1 : 0;
 
 		return (
 			<div id="panel-root">
@@ -58,11 +47,11 @@ class Panel extends React.Component {
 
 					@media (max-width: 960px) {
 						#panel-root {
-							display: ${panelDisplay};
+							display: block;
 							opacity: ${panelOpacity};
 							position: fixed;
 							width: 100vw;
-							z-index: 10;
+							z-index: ${panelZIndex};
 
 							transition: opacity 0.4s;
 						}
