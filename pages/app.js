@@ -4,7 +4,7 @@ import Header from '../components/Header';
 import TwoRangesSlider from '../components/TwoRangesSlider';
 import Panel from '../components/Panel';
 
-const MIN_WIDTH = 375;
+const MIN_WIDTH = 350;
 const MIN_HEIGHT = 450;
 
 class App extends React.Component {

@@ -1,11 +1,33 @@
 const TWO_PI = 2*Math.PI;
 const HALF_PI = Math.PI/2;
 const ONE_HOUR = Math.PI/12;
-const EIGHT_HOURS = Math.PI*2/3;
-const TWO_HOURS = Math.PI/6;
 
 const MIN_GAP = 4*ONE_HOUR;
 
+/**
+ * Renders a canvas with two sliders (see terminology) which behaves like a circular range input. Rendered range
+ * actually stands for a 24 hours scheduler. So some clock digits are also rendered.
+ * 
+ * Sliders have 3 constraints:
+ * 1. Min lenght constraint
+ * 2. Max lenght constraint
+ * 3. Min gap constraint (sliders can't be too close to one another)
+ * 
+ * Planning to do:
+ *  - Extend max number of sliders
+ *  - Make constraint customisable
+ *  - Add, remove sliders on the go
+ * 
+ * Note: By default, angles are in radian. Circle 0 position is top center. As canvas methods 0 position is middle
+ * right, we substract PI/2 before actual rendering as a point or using thoses functions.
+ * 
+ * TERMINOLOGY
+ * WITHIN THE BOUNDS OF THIS CLASS, we call:
+ *  - slider: a delimited segment on the main component (circle). Sliders are oriented.
+ *  - index: one of the two delimiters of a slider
+ *  - head: front index of a slider
+ *  - tail: rear index of a slider
+ */
 class TwoRangesSlider extends React.Component {
 	constructor(props) {
 		super(props);
@@ -21,6 +43,7 @@ class TwoRangesSlider extends React.Component {
 		const rectY = centerY - innerRadius - dotRadius - 2;
 
 		this.state = {
+			// constant state elements
 			centerX,
 			centerY,
 			innerRadius,
@@ -31,29 +54,30 @@ class TwoRangesSlider extends React.Component {
 			rectX,
 			rectY,
 			
+			// variable state elements
 			trackingPointer: false,
-			alpha: {
-				name: 'alpha',
-				head: {
-					angle: 6*ONE_HOUR,
-					type: 'head',
+			sliders: [
+				{
+					head: {
+						angle: 6*ONE_HOUR,
+						type: 'head',
+					},
+					tail: {
+						angle: 0,
+						type: 'tail',
+					},
 				},
-				tail: {
-					angle: 0,
-					type: 'tail',
-				},
-			},
-			beta: {
-				name: 'beta',
-				head: {
-					angle: 14*ONE_HOUR,
-					type: 'head',
-				},
-				tail: {
-					angle: 12*ONE_HOUR,
-					type: 'tail',
-				},
-			},
+				{
+					head: {
+						angle: 14*ONE_HOUR,
+						type: 'head',
+					},
+					tail: {
+						angle: 12*ONE_HOUR,
+						type: 'tail',
+					}
+				}
+			],
 			
 			headAngle: null,
 			tailAngle: null,
@@ -63,7 +87,7 @@ class TwoRangesSlider extends React.Component {
 	}
 
 	componentDidMount() {
-		const { centerX, centerY, innerRadius, outerRadius } = this.state;
+		const { centerX, centerY, innerRadius, outerRadius, sliders } = this.state;
 		const ctx = this.refs.canvas.getContext("2d");
 
 		// Draw clock digits
@@ -84,11 +108,9 @@ class TwoRangesSlider extends React.Component {
 		ctx.closePath();
 		ctx.stroke();
 
-		// Draw alpha slider
-		this.drawSlider(ctx, this.state.alpha);
-
-		// Draw beta slider
-		this.drawSlider(ctx, this.state.beta);
+		sliders.forEach(slider => {
+			this.drawSlider(ctx, slider);
+		});
 	}
 
 	radialToCardinal = (radius, angle) => {
@@ -151,7 +173,6 @@ class TwoRangesSlider extends React.Component {
 	
 	moveSlider = (e) => {
 		const {
-			// constant state elements
 			centerX,
 			centerY,
 			innerRadius,
@@ -160,12 +181,10 @@ class TwoRangesSlider extends React.Component {
 			rectX,
 			rectY,
 
-			// variable state elements
+			sliders,
 			trackingPointer,
 			selectedSlider,
 			selectedIndex,
-			alpha,
-			beta,
 			headAngle,
 			tailAngle
 		} = this.state;
@@ -219,13 +238,13 @@ class TwoRangesSlider extends React.Component {
 			// We can be sure of that because we are sure that head angle is gt tail angle
 
 			// Max lenght constraint
-			if (Math.abs(delta) > EIGHT_HOURS) {
-				oppositeNewAngle = selectedNewAngle - Math.sign(delta)*EIGHT_HOURS;
+			if (Math.abs(delta) > 8*ONE_HOUR) {
+				oppositeNewAngle = selectedNewAngle - Math.sign(delta)*8*ONE_HOUR;
 			}
 
 			// Min lenght constraint
-			if (Math.abs(delta) < TWO_HOURS) {
-				oppositeNewAngle = selectedNewAngle - Math.sign(delta)*TWO_HOURS;
+			if (Math.abs(delta) < 2*ONE_HOUR) {
+				oppositeNewAngle = selectedNewAngle - Math.sign(delta)*2*ONE_HOUR;
 			}
 
 			const localHeadAngle = isHeadSelected ? selectedNewAngle : oppositeNewAngle;
@@ -236,14 +255,20 @@ class TwoRangesSlider extends React.Component {
 			let frontGap = 0;
 			let rearGap = 0;
 
-			if (selectedSlider == alpha) {
-				frontGap = this.modulo2Pi(beta.tail.angle - localHeadAngle);
-				rearGap = this.modulo2Pi(localTailAngle - beta.head.angle);
+			let selectedSliderIndex = 0;
+			const nbSliders = sliders.length;
+
+			for (let i in sliders) {
+				if (selectedSlider === sliders[i]) {
+					selectedSliderIndex = parseInt(i);
+				}
 			}
-			else if (selectedSlider == beta) {
-				frontGap = this.modulo2Pi(alpha.tail.angle - localHeadAngle);
-				rearGap = this.modulo2Pi(localTailAngle - alpha.head.angle);
-			}
+
+			const prevSlider = sliders[(selectedSliderIndex - 1 + nbSliders)%nbSliders];
+			const nextSlider = sliders[(selectedSliderIndex + 1)%nbSliders];
+
+			frontGap = this.modulo2Pi(nextSlider.tail.angle - localHeadAngle);
+			rearGap = this.modulo2Pi(localTailAngle - prevSlider.head.angle);
 
 			// Min distance from other slider constraint. If min gap is not met, no position update
 			if (frontGap < MIN_GAP || rearGap < MIN_GAP) {
@@ -263,20 +288,20 @@ class TwoRangesSlider extends React.Component {
 			ctx.stroke();
 			ctx.strokeStyle = 'cyan';
 
-			// Meant reference comparison
-			if (selectedSlider == alpha) {
-				// Draw beta slider
-				this.drawSlider(ctx, beta);
+			// Draw sliders
+			for (let i in sliders) {
+				if (parseInt(i) === selectedSliderIndex) {
+					// Draw selected slider
+					this.drawSlider(ctx, { head: { angle: localHeadAngle }, tail: { angle: localTailAngle } });
+				}
+				else {
+					this.drawSlider(ctx, sliders[i]);
+				}
 			}
-			else if (selectedSlider == beta) {
-				// Draw alpha slider
-				this.drawSlider(ctx, alpha);
-			}
-
-			// Draw selected slider
-			this.drawSlider(ctx, { head: { angle: localHeadAngle }, tail: { angle: localTailAngle } });
 
 			this.setState({
+				selectedSliderIndex,
+
 				headAngle: this.modulo2Pi(localHeadAngle),
 				tailAngle: this.modulo2Pi(localTailAngle),
 			});
@@ -284,45 +309,36 @@ class TwoRangesSlider extends React.Component {
 	}
 
 	trackPointer = (e) => {
-		const { alpha, beta, dotRadius, innerRadius } = this.state;
+		const { sliders, dotRadius, innerRadius } = this.state;
 		// Check if mouse clicked on the head, tail or neither by comparing clicking point with index center
 		const canvas = this.refs.canvas;
-		const headAlphaCenter = this.radialToCardinal(innerRadius, alpha.head.angle);
-		const tailAlphaCenter = this.radialToCardinal(innerRadius, alpha.tail.angle);
-		const headBetaCenter = this.radialToCardinal(innerRadius, beta.head.angle);
-		const tailBetaCenter = this.radialToCardinal(innerRadius, beta.tail.angle);
 
 		const relativeClick = {
 			x: e.pageX - canvas.offsetLeft,
 			y: e.pageY - canvas.offsetTop
 		};
 
-		const distanceToHeadAlpha = this.distance(headAlphaCenter, relativeClick);
-		const distanceToTailAlpha = this.distance(tailAlphaCenter, relativeClick);
-		const distanceToHeadBeta = this.distance(headBetaCenter, relativeClick);
-		const distanceToTailBeta = this.distance(tailBetaCenter, relativeClick);
-					
-		const minDistance = Math.min(distanceToHeadAlpha, distanceToTailAlpha, distanceToHeadBeta, distanceToTailBeta);
+		let minDistance = Number.MAX_VALUE;
 		let selectedSlider = null;
 		let selectedIndex = null;
-		switch (minDistance) {
-			case distanceToHeadAlpha:
-				selectedSlider = alpha
-				selectedIndex = alpha.head;
-				break;
-			case distanceToTailAlpha:
-				selectedSlider = alpha
-				selectedIndex = alpha.tail;
-				break;
-			case distanceToHeadBeta:
-				selectedSlider = beta
-				selectedIndex = beta.head;
-				break;
-			case distanceToTailBeta:
-				selectedSlider = beta
-				selectedIndex = beta.tail;
-				break;
+
+		for (let i in sliders) {
+			let slider = sliders[i]
+			const headCenterDistance = this.distance(this.radialToCardinal(innerRadius, slider.head.angle), relativeClick);
+			const tailCenterDistance = this.distance(this.radialToCardinal(innerRadius, slider.tail.angle), relativeClick);
+
+			let newMinDistance = Math.min(
+				headCenterDistance,
+				tailCenterDistance,
+				minDistance
+			);
+			if (newMinDistance < minDistance) {
+				selectedSlider = slider;
+				selectedIndex = (newMinDistance === headCenterDistance ? slider.head : slider.tail);
+				minDistance = newMinDistance;
+			}
 		}
+		
 		const trackingPointer = minDistance < dotRadius;
 
 		this.setState({
@@ -339,20 +355,22 @@ class TwoRangesSlider extends React.Component {
 		// React state update seems not fast enough with complex objects.
 		// So in the mouse move event update only simple type variable in the state
 		// Complex variable (sliders) are updated here once mouse is released
-		const { selectedSlider, headAngle, tailAngle } = this.state;
+		const { sliders, selectedSliderIndex, headAngle, tailAngle } = this.state;
+
+		sliders[selectedSliderIndex] = {
+			head: {
+				angle: this.modulo2Pi(headAngle),
+				type: 'head',
+			},
+			tail: {
+				angle: this.modulo2Pi(tailAngle),
+				type: 'tail',
+			}
+		}
+
 		this.setState({
 			trackingPointer: false,
-			[selectedSlider.name]: {
-				name: selectedSlider.name,
-				head: {
-					angle: this.modulo2Pi(headAngle),
-					type: 'head',
-				},
-				tail: {
-					angle: this.modulo2Pi(tailAngle),
-					type: 'tail',
-				}
-			},
+			sliders,
 		});
 	}
 	
@@ -368,6 +386,10 @@ class TwoRangesSlider extends React.Component {
 					onMouseDown={e => this.trackPointer(e)}
 					onMouseUp={this.untrackPointer}
 					onMouseMove={e => this.moveSlider(e)}
+
+					onTouchStart={e => { this.trackPointer(e); alert('touch'); }}
+					onTouchMove={e => this.moveSlider(e)}
+					onTouchEnd={this.untrackPointer}
 				/>
 
 				<style jsx>{`
