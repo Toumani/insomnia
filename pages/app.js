@@ -8,7 +8,20 @@ const MIN_WIDTH = 375;
 const MIN_HEIGHT = 450;
 
 class App extends React.Component {
+	constructor(props) {
+		super(props);
+
+		this.state = {
+			isPanelOpened: false,
+		};
+	}
+
+	togglePanel = (isPanelOpened) => {
+		this.setState({ isPanelOpened });
+	}
+
 	render() {
+		const { isPanelOpened } = this.state;
 		return (
 			<div id="root">
 				<Head>
@@ -24,13 +37,17 @@ class App extends React.Component {
 						}
 					`}</style>
 				</Head>
-				<Header />
+				<Header
+					togglePanel={this.togglePanel}
+				/>
 				<main>
 					<TwoRangesSlider
 						width={MIN_WIDTH}
 						height={MIN_HEIGHT}
 					/>
-					<Panel />
+					<Panel
+						open={isPanelOpened}
+					/>
 				</main>
 				<style jsx>{`
 					* {

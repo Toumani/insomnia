@@ -1,5 +1,20 @@
 class Header extends React.Component {
+	constructor(props) {
+		super(props);
+
+		this.state = {
+			isPanelOpened: false,
+		}
+	}
+
+	togglePanel = (isPanelOpened) => {
+		this.props.togglePanel(isPanelOpened);
+		this.setState({ isPanelOpened });
+	}
+
 	render() {
+		const { isPanelOpened } = this.state;
+
 		return (
 			<div id="header-root">
 				<div id="logo-container">
@@ -7,13 +22,23 @@ class Header extends React.Component {
 				</div>
 				<h1 ref="title">INSOMNI{ String.fromCharCode(1051) }</h1>
 				<div id="img-container">
-					<img src="/close.svg" alt="Close" />
+				{
+					isPanelOpened ?
+					(
+						<img src="/close.svg" alt="Close" onClick={() => this.togglePanel(false)} />
+					)
+					:
+					(
+						<img src="/menu.svg" alt="Menu" onClick={() => this.togglePanel(true)} />
+					)
+				}
 				</div>
 				<style jsx>{`
 					#header-root {
 						width: 100%;
 						background-color: black; /* use a gradient */
 						position: fixed;
+						z-index: 20;
 					}
 					h1 {
 						font-family: 'Comfortaa', cursive;
@@ -23,24 +48,24 @@ class Header extends React.Component {
 						padding: 4px 10px;
 						vertical-align: middle;
 					}
-					@media (min-width: 960px) {
-						#img-container {
-							display: none;
-						}
-					}
 					#logo-container {
 						display: inline-block;
 						vertical-align: middle;
 					}
 					#img-container {
 						position: relative;
-						top: 2px;
+						top: 6px;
 						right: 10px;
 						float: right;
 					}
+					@media (min-width: 960px) { /* displays only for mobile view */
+						#img-container {
+							display: none;
+						}
+					}
 					#img-container img {
 						width: 40px;
-
+						cursor: pointer;
 					}
 				`}</style>
 			</div>
