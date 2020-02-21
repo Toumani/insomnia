@@ -25,11 +25,13 @@ class App extends React.Component {
 					`}</style>
 				</Head>
 				<Header />
-				<TwoRangesSlider
-					width={MIN_WIDTH}
-					height={MIN_HEIGHT}
-				/>
-				<Panel />
+				<main>
+					<TwoRangesSlider
+						width={MIN_WIDTH}
+						height={MIN_HEIGHT}
+					/>
+					<Panel />
+				</main>
 				<style jsx>{`
 					* {
 						font-family: 'Lacquer', sans-serif;
@@ -37,11 +39,17 @@ class App extends React.Component {
 
 					#root {
 						display: flex;
-						flex-direction: row;
+						flex-direction: column;
 						height: 100vh;
 						width: 100vw;
 						min-width: ${MIN_WIDTH}px;
 						min-height: ${MIN_HEIGHT}px;
+					}
+
+					main {
+						display: flex;
+						flex-direction: row;
+						height: 100%;
 					}
 				`}</style>
 			</div>
