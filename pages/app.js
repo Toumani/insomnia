@@ -4,6 +4,9 @@ import Header from '../components/Header';
 import TwoRangesSlider from '../components/TwoRangesSlider';
 import Panel from '../components/Panel';
 
+const MIN_WIDTH = 375;
+const MIN_HEIGHT = 450;
+
 class App extends React.Component {
 	render() {
 		return (
@@ -22,7 +25,10 @@ class App extends React.Component {
 					`}</style>
 				</Head>
 				<Header />
-				<TwoRangesSlider />
+				<TwoRangesSlider
+					width={MIN_WIDTH}
+					height={MIN_HEIGHT}
+				/>
 				<Panel />
 				<style jsx>{`
 					* {
@@ -34,6 +40,8 @@ class App extends React.Component {
 						flex-direction: row;
 						height: 100vh;
 						width: 100vw;
+						min-width: ${MIN_WIDTH}px;
+						min-height: ${MIN_HEIGHT}px;
 					}
 				`}</style>
 			</div>
