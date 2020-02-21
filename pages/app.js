@@ -2,27 +2,31 @@ import Head from 'next/head';
 
 import Header from '../components/Header';
 import TwoRangesSlider from '../components/TwoRangesSlider';
+import Panel from '../components/Panel';
 
 class App extends React.Component {
 	render() {
 		return (
 			<div id="root">
 				<Head>
-					<meta charset="UTF-8" />
+					<meta charSet="UTF-8" />
 
 					<link href="https://fonts.googleapis.com/css?family=Lacquer&display=swap" rel="stylesheet" /> 
 					<link href="https://fonts.googleapis.com/css?family=Comfortaa&display=swap" rel="stylesheet" /> 
+
+					<style>{`
+						body {
+							margin: 0;
+							background-color: darkgray;
+						}
+					`}</style>
 				</Head>
 				<Header />
 				<TwoRangesSlider />
+				<Panel />
 				<style jsx>{`
 					* {
 						font-family: 'Lacquer', sans-serif;
-					}
-
-					body {
-						margin: 0;
-						background-color: lightgray;
 					}
 
 					#root {
