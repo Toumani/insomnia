@@ -15,10 +15,10 @@ class TwoRangesSlider extends React.Component {
 		const outerRadius = 150; //  and this too
 		const dotRadius = 10;	 //  well, try for this also
 
-		const rectWidth = 2*innerRadius + 2*dotRadius + 3;
+		const rectWidth = 2*innerRadius + 2*dotRadius + 4;
 		const rectHeight = rectWidth;
-		const rectX = centerX - innerRadius - dotRadius - 1;
-		const rectY = centerY - innerRadius - dotRadius - 1;
+		const rectX = centerX - innerRadius - dotRadius - 2;
+		const rectY = centerY - innerRadius - dotRadius - 2;
 
 		this.state = {
 			centerX,

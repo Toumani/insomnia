@@ -18,7 +18,7 @@ class Header extends React.Component {
 		return (
 			<div id="header-root">
 				<div id="logo-container">
-					<img src="/logo.png" alt="Insomnia - Logo" />
+					<img src="/logo.svg" alt="Insomnia - Logo" />
 				</div>
 				<h1 ref="title">INSOMNI{ String.fromCharCode(1051) }</h1>
 				<div id="img-container">
@@ -51,6 +51,9 @@ class Header extends React.Component {
 					#logo-container {
 						display: inline-block;
 						vertical-align: middle;
+					}
+					#logo-container img {
+						width: 45px;
 					}
 					#img-container {
 						position: relative;
