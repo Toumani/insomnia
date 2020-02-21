@@ -5,7 +5,7 @@ class Header extends React.Component {
 				<div id="logo-container">
 					<img src="/logo.png" alt="Insomnia - Logo" />
 				</div>
-				<h1>INSOMNI?</h1>
+				<h1 ref="title">INSOMNI{ String.fromCharCode(1051) }</h1>
 				<div id="img-container">
 					<img src="/close.svg" alt="Close" />
 				</div>
